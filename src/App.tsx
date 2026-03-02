@@ -16,28 +16,14 @@ import {
 import {
   TONGS_UPGRADE_ID,
   TONGS_GOOD_WIDEN_PER_LEVEL,
-  TONGS_PERFECT_WIDEN_MAX,
   BELLOWS_UPGRADE_ID,
   BELLOWS_HEAT_BASE,
   BELLOWS_HEAT_PER_LEVEL,
-  BELLOWS_COOLDOWN_MS,
   POLISH_UPGRADE_ID,
   POLISH_REP_BONUS_PER_LEVEL,
   APPRENTICE_UPGRADE_ID,
-  HEAT_DRIFT_APPRENTICE_PER_LEVEL,
   OILSTONE_UPGRADE_ID,
-  OILSTONE_DEFECT_REDUCTION_PER_LEVEL,
   FRONT_SIGN_UPGRADE_ID,
-  HEAT_START,
-  HEAT_DRIFT_PER_TICK,
-  HEAT_PERFECT_LO,
-  HEAT_PERFECT_HI,
-  HEAT_GOOD_LO,
-  HEAT_GOOD_HI,
-  HEAT_TOO_HOT_HI,
-  HAMMER_COOLDOWN_MS,
-  GRADE_PAYOUT_MULT,
-  GRADE_REP_MULT,
   TIER_MULTIPLIERS,
   UPGRADE_BASE_COSTS,
   upgradeCost,
@@ -50,15 +36,15 @@ import { loadState, saveState } from './lib/storage';
 import { FeaturedRunCanvas } from './ui/FeaturedRunCanvas';
 import './App.css';
 
-// ─── Tier display ─────────────────────────────────────────────────────────────
+// --- Tier display ---
 
 const TIER_COLORS: Record<string, string> = {
-  ROOKIE:  '#888',
+  ROOKIE: '#888',
   REGULAR: '#38bdf8',
-  NOBLE:   '#fbbf24',
+  NOBLE: '#fbbf24',
 };
 
-// ─── FX state ─────────────────────────────────────────────────────────────────
+// --- FX state ---
 
 type FxEvent =
   | { kind: 'CLANG'; id: number }
@@ -66,7 +52,7 @@ type FxEvent =
   | { kind: 'GOLD'; id: number; amount: number }
   | { kind: 'FAIL'; id: number };
 
-// ─── Stable string hash ───────────────────────────────────────────────────────
+// --- Stable string hash ---
 
 function hashId(id: string): number {
   let h = 0;
@@ -74,7 +60,7 @@ function hashId(id: string): number {
   return h;
 }
 
-// ─── Upgrade effect text ──────────────────────────────────────────────────────
+// --- Upgrade effect text ---
 
 function upgradeEffectText(id: string, level: number): string {
   if (id === TONGS_UPGRADE_ID)
@@ -84,15 +70,15 @@ function upgradeEffectText(id: string, level: number): string {
   if (id === POLISH_UPGRADE_ID)
     return `+${level * POLISH_REP_BONUS_PER_LEVEL} rep/delivery`;
   if (id === APPRENTICE_UPGRADE_ID)
-    return level === 0 ? 'Slows heat drift' : `\u22122.4 heat/sec drift`;
+    return level === 0 ? 'Slows heat drift' : `-2.4 heat/sec drift`;
   if (id === OILSTONE_UPGRADE_ID)
-    return level === 0 ? 'Reduces bad-strike defects' : `\u22121 defect/bad strike`;
+    return level === 0 ? 'Reduces bad-strike defects' : `-1 defect/bad strike`;
   if (id === FRONT_SIGN_UPGRADE_ID)
     return `+${level} weight toward higher-tier customers`;
   return '';
 }
 
-// ─── App ─────────────────────────────────────────────────────────────────────
+// --- App ---
 
 function App() {
   const [state, setState] = useState<GameState>(() => loadState() ?? initState());
@@ -105,6 +91,7 @@ function App() {
   const [tutorialStep, setTutorialStep] = useState<number>(
     () => localStorage.getItem('cf_seen_tutorial') === '1' ? -1 : 0
   );
+  const [openDrawer, setOpenDrawer] = useState<'orders' | 'upgrades' | null>(null);
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -117,7 +104,17 @@ function App() {
     return () => clearInterval(id);
   }, []);
 
-  // ─── Derived values ────────────────────────────────────────────────────────
+  // --- ESC key to close drawer ---
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpenDrawer(null);
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, []);
+
+  // --- Derived values ---
 
   const isCrafting = state.crafting !== undefined;
   const heat = state.crafting?.heat ?? 0;
@@ -138,7 +135,9 @@ function App() {
 
   const eventDef = state.event ? EVENTS.find(e => e.id === state.event!.id) : undefined;
 
-  // ─── Tutorial auto-advance ─────────────────────────────────────────────────
+  const selectedOrder = state.orders.find(o => o.id === state.activeOrderId);
+
+  // --- Tutorial auto-advance ---
 
   useEffect(() => {
     if (tutorialStep === 0 && state.activeOrderId) setTutorialStep(1);
@@ -146,7 +145,7 @@ function App() {
     if (tutorialStep === 2 && state.ordersCompleted >= 1) setTutorialStep(3);
   }, [state.activeOrderId, isCrafting, state.ordersCompleted, tutorialStep]);
 
-  // ─── FX trigger ────────────────────────────────────────────────────────────
+  // --- FX trigger ---
 
   function triggerFx(event: FxEvent, durationMs: number) {
     if (fxTimerRef.current) clearTimeout(fxTimerRef.current);
@@ -176,7 +175,7 @@ function App() {
     return Math.round(order.basePayout * tierMult * eventPayoutMult) + 'g (×grade)';
   }
 
-  // ─── Tutorial helpers ──────────────────────────────────────────────────────
+  // --- Tutorial helpers ---
 
   const TUTORIAL_MESSAGES: Record<number, string> = {
     0: 'Pick an order to craft.',
@@ -190,10 +189,11 @@ function App() {
     setTutorialStep(-1);
   }
 
-  // ─── Event handlers ────────────────────────────────────────────────────────
+  // --- Event handlers ---
 
   function handleSelectOrder(orderId: string) {
     setState(prev => selectOrder(prev, orderId));
+    setOpenDrawer(null);
   }
 
   function handleStartCraft() {
@@ -263,16 +263,16 @@ function App() {
     }
   }
 
-  // ─── Render ────────────────────────────────────────────────────────────────
+  // --- Render ---
 
-  const forgeColClass = `forge-col${fx?.kind === 'CLANG' ? ' forge-shake' : ''}`;
+  const heatColor = heat < 35 ? '#60a5fa' : heat < 70 ? '#f59e0b' : '#ef4444';
+  const quenchColor =
+    heat > 75 ? 'quench-hot' : heat >= 50 && heat <= 75 ? 'quench-ideal' : heat >= 35 ? 'quench-cold' : 'quench-neutral';
 
   return (
-    <div style={{ minHeight: '100vh', boxSizing: 'border-box' }}>
+    <div className="app-shell">
       {/* Lock toast */}
-      {lockToast && (
-        <div className="lock-toast">{lockToast}</div>
-      )}
+      {lockToast && <div className="lock-toast">{lockToast}</div>}
 
       {/* Intro modal */}
       {showIntro && (
@@ -299,10 +299,108 @@ function App() {
       {/* Vignette overlay */}
       <div className="vignette" />
 
-      {/* Canvas overlay — featured run animation */}
+      {/* Canvas overlay - featured run animation */}
       {state.featuredRun && state.rankIndex >= 2 && (
         <FeaturedRunCanvas run={state.featuredRun} onClose={handleCloseRun} />
       )}
+
+      {/* Drawer backdrop */}
+      <div
+        className={`drawer-backdrop${openDrawer ? ' backdrop-visible' : ''}`}
+        onClick={() => setOpenDrawer(null)}
+      />
+
+      {/* Orders drawer */}
+      <aside className={`drawer drawer-orders${openDrawer === 'orders' ? ' drawer-open' : ''}`}>
+        <div className="drawer-header">
+          <span className="section-heading">Orders</span>
+          <button className="drawer-close" onClick={() => setOpenDrawer(null)}>
+            ✕
+          </button>
+        </div>
+        <div className="drawer-scroll">
+          {state.orders.map(order => {
+            const isSelected = order.id === state.activeOrderId;
+            const flavorLines = ITEM_FLAVOR_LINES[order.itemType] ?? [];
+            const flavor =
+              flavorLines.length > 0 ? flavorLines[hashId(order.id) % flavorLines.length] : null;
+            return (
+              <button
+                key={order.id}
+                className={`order-card${isSelected ? ' order-selected' : ''}${order.isFeatured ? ' order-featured' : ''}`}
+                onClick={() => handleSelectOrder(order.id)}
+              >
+                <div className="order-card-header">
+                  <span className="order-item">{order.isFeatured && state.rankIndex >= 2 ? '✦ ' : ''}{order.itemType}</span>
+                  <span className="order-tier" style={{ color: TIER_COLORS[order.customerTier] }}>
+                    {order.customerTier}
+                  </span>
+                </div>
+                <div className="order-meta">{previewTime(order)} · {previewPayout(order)}</div>
+                {flavor && <div className="order-flavor">{flavor}</div>}
+              </button>
+            );
+          })}
+        </div>
+      </aside>
+
+      {/* Upgrades drawer */}
+      <aside className={`drawer drawer-upgrades${openDrawer === 'upgrades' ? ' drawer-open' : ''}`}>
+        <div className="drawer-header">
+          <span className="section-heading">Upgrades</span>
+          <button className="drawer-close" onClick={() => setOpenDrawer(null)}>
+            ✕
+          </button>
+        </div>
+        <div className="drawer-scroll">
+          {nextRank && (
+            <div className="next-goal">🎯 {nextRank.xpRequired - state.repXp} rep → {nextRank.name}</div>
+          )}
+          {state.upgrades.map(upgrade => {
+            const baseCost = UPGRADE_BASE_COSTS[upgrade.id] ?? 0;
+            const cost = upgradeCost(baseCost, upgrade.level);
+            const isMaxed = upgrade.level >= upgrade.maxLevel;
+            const canAfford = state.gold >= cost;
+            const unlockRank = UPGRADE_UNLOCK_RANK[upgrade.id] ?? 0;
+            const isLocked = state.rankIndex < unlockRank;
+            return (
+              <div key={upgrade.id} className={`upgrade-card-drawer${isLocked ? ' upgrade-locked-card' : ''}`}>
+                <div className="upgrade-name">{upgrade.name}</div>
+                <div className="upgrade-level">
+                  Level {upgrade.level} / {upgrade.maxLevel}
+                </div>
+                <div className="upgrade-effect">{upgradeEffectText(upgrade.id, upgrade.level)}</div>
+                {!isMaxed && <div className="upgrade-cost">Next: {cost}g</div>}
+                {isLocked && (
+                  <div className="upgrade-hint">🔒 Reach {RANKS[unlockRank].name}</div>
+                )}
+                <button
+                  onClick={() => {
+                    if (isLocked) {
+                      setLockToast(`Unlocks at ${RANKS[unlockRank].name}`);
+                      setTimeout(() => setLockToast(null), 2000);
+                      return;
+                    }
+                    handleBuyUpgrade(upgrade.id);
+                  }}
+                  disabled={isMaxed || !canAfford || isLocked}
+                  style={
+                    isLocked
+                      ? { color: '#666', cursor: 'not-allowed' }
+                      : isMaxed
+                        ? { background: '#22c55e', color: '#fff' }
+                        : canAfford
+                          ? { background: '#7c3aed', color: '#fff' }
+                          : undefined
+                  }
+                >
+                  {isLocked ? `Locked` : isMaxed ? 'MAX' : `Buy (${cost}g)`}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </aside>
 
       {/* Title bar */}
       <div className="title-bar">
@@ -328,16 +426,7 @@ function App() {
       </div>
 
       {/* HUD */}
-      <div style={{
-        padding: '8px 16px',
-        borderBottom: '1px solid #2a2a2a',
-        marginBottom: '12px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '20px',
-        flexWrap: 'wrap',
-        fontSize: '0.95rem',
-      }}>
+      <div className="hud-row">
         <span style={{ color: '#fbbf24', fontWeight: 'bold', fontSize: '1.1rem' }}>
           {state.gold}g
         </span>
@@ -348,7 +437,7 @@ function App() {
           </span>
         ) : (
           <span style={{ fontSize: '0.85rem', color: '#fbbf24' }}>
-            {state.repXp} rep — Max rank!
+            {state.repXp} rep - Max rank!
           </span>
         )}
         {state.rankIndex >= 1 && eventDef && (
@@ -359,194 +448,144 @@ function App() {
         <span className="hud-objective">🎯 {getNextObjective()}</span>
       </div>
 
-      {/* 3-column layout */}
-      <div style={{
-        display: 'flex',
-        flexDirection: 'row',
-        gap: '12px',
-        padding: '0 16px 16px',
-        minHeight: 'calc(100vh - 120px)',
-        boxSizing: 'border-box',
-      }}>
-        {/* Column 1 — Orders */}
-        <div className={tutorialStep === 0 ? 'tutorial-highlight' : ''}
-          style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '8px',
-          border: '1px solid #2a2a2a',
-          borderRadius: '12px',
-          padding: '12px',
-        }}>
-          {tutorialStep === 0 && (
-            <div className="tutorial-chip">
-              <span>{TUTORIAL_MESSAGES[0]}</span>
-              <button onClick={dismissTutorial}>✕</button>
-            </div>
-          )}
-          <div className="section-heading">Orders</div>
-          {state.orders.map(order => {
-            const isSelected = order.id === state.activeOrderId;
-            const flavorLines = ITEM_FLAVOR_LINES[order.itemType] ?? [];
-            const flavor = flavorLines.length > 0
-              ? flavorLines[hashId(order.id) % flavorLines.length]
-              : null;
-            return (
-              <button
-                key={order.id}
-                onClick={() => handleSelectOrder(order.id)}
-                style={{
-                  border: isSelected
-                    ? '2px solid #646cff'
-                    : order.isFeatured
-                      ? '1px solid #a855f7'
-                      : '1px solid #333',
-                  borderRadius: '8px',
-                  padding: '10px',
-                  textAlign: 'left',
-                  cursor: isCrafting ? 'not-allowed' : 'pointer',
-                  opacity: isCrafting ? 0.6 : 1,
-                  background: isSelected ? '#1e1e3f' : order.isFeatured ? '#1a0f2e' : '#111',
-                  lineHeight: '1.6',
-                }}
-              >
-                <div style={{ fontWeight: 'bold' }}>
-                  {order.isFeatured && state.rankIndex >= 2 ? '⭐ ' : ''}{order.itemType}
-                </div>
-                <div style={{ fontSize: '0.75rem', color: TIER_COLORS[order.customerTier], marginBottom: '2px' }}>
-                  {order.customerTier}
-                </div>
-                <div style={{ fontSize: '0.85rem', color: '#aaa' }}>
-                  ⏱ {previewTime(order)} &nbsp; 💰 {previewPayout(order)}
-                </div>
-                {flavor && (
-                  <div style={{ fontSize: '0.72rem', color: '#555', fontStyle: 'italic', marginTop: '3px' }}>
-                    {flavor}
-                  </div>
-                )}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Column 2 — Forge */}
-        <div className={`${forgeColClass}${tutorialStep === 1 || tutorialStep === 2 ? ' tutorial-highlight' : ''}`} style={{
-          flex: 1.5,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '8px',
-          border: '1px solid #444',
-          borderRadius: '12px',
-          padding: '12px',
-        }}>
+      {/* Forge bench wrapper */}
+      <main className="forge-bench-wrapper">
+        <div className={`forge-bench${state.crafting && fx?.kind === 'CLANG' ? ' forge-shake' : ''}`}>
+          {/* Tutorial chip */}
           {(tutorialStep === 1 || tutorialStep === 2) && (
             <div className="tutorial-chip">
               <span>{TUTORIAL_MESSAGES[tutorialStep]}</span>
               <button onClick={dismissTutorial}>✕</button>
             </div>
           )}
-          <div className="section-heading">Forge</div>
 
           {/* Next goal */}
           {nextRank && (
-            <div className="next-goal">
-              🎯 {nextRank.xpRequired - state.repXp} rep → {nextRank.name}
+            <div className="next-goal">🎯 {nextRank.xpRequired - state.repXp} rep → {nextRank.name}</div>
+          )}
+
+          {/* Selected order summary or pick order CTA */}
+          {!selectedOrder ? (
+            <div className="forge-order-summary no-order">
+              <p style={{ color: '#888', marginBottom: '12px' }}>No order selected</p>
+              <button className="forge-cta" onClick={() => setOpenDrawer('orders')}>
+                📋 Pick an Order
+              </button>
+            </div>
+          ) : (
+            <div className="forge-order-summary">
+              <div className="order-summary-header">
+                <span className="order-summary-item">{selectedOrder.itemType}</span>
+                <span className="order-summary-tier" style={{ color: TIER_COLORS[selectedOrder.customerTier] }}>
+                  {selectedOrder.customerTier}
+                </span>
+              </div>
+              <div className="order-summary-meta">{previewTime(selectedOrder)} · {previewPayout(selectedOrder)}</div>
+              {ITEM_FLAVOR_LINES[selectedOrder.itemType]?.[hashId(selectedOrder.id) % ITEM_FLAVOR_LINES[selectedOrder.itemType].length] && (
+                <div className="order-summary-flavor">
+                  "{ITEM_FLAVOR_LINES[selectedOrder.itemType][hashId(selectedOrder.id) % ITEM_FLAVOR_LINES[selectedOrder.itemType].length]}"
+                </div>
+              )}
             </div>
           )}
 
-
-          {!isCrafting && (
+          {/* Start Craft button (when not crafting and order selected) */}
+          {!isCrafting && selectedOrder && (
             <button
               onClick={handleStartCraft}
-              disabled={!state.activeOrderId}
               style={{
-                marginTop: '4px',
+                width: '100%',
+                marginBottom: '12px',
                 fontSize: '1.05rem',
                 fontWeight: 'bold',
-                padding: '0.7em 1.2em',
+                padding: '12px',
+                background: '#3a1a4a',
+                border: '1px solid #7c3aed',
+                color: '#e2c97e',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                transition: 'background 0.15s',
               }}
+              onMouseEnter={e => ((e.target as HTMLButtonElement).style.background = '#4c1a6a')}
+              onMouseLeave={e => ((e.target as HTMLButtonElement).style.background = '#3a1a4a')}
             >
-              Start Craft
+              🔥 Start Craft
             </button>
           )}
 
+          {/* Crafting UI */}
           {isCrafting && (
             <>
               {/* Heat meter */}
-              <div style={{ marginTop: '8px' }}>
-                <div style={{ fontSize: '0.8rem', color: '#aaa', marginBottom: '4px' }}>
-                  Heat: {Math.round(heat)}°
+              <div className="heat-meter">
+                <div className="heat-meter-label">
+                  <span>Heat: {Math.round(heat)}°</span>
                 </div>
-                <div style={{
-                  background: '#222',
-                  borderRadius: '6px',
-                  height: '28px',
-                  overflow: 'hidden',
-                  position: 'relative',
-                }}>
-                  <div style={{
-                    width: `${(heat / 100) * 100}%`,
-                    height: '100%',
-                    background: heat < 35 ? '#60a5fa' : heat < 70 ? '#f59e0b' : '#ef4444',
-                    transition: 'width 0.1s linear',
-                  }} />
+                <div className="heat-meter-bar" style={state.crafting?.lastStrike && state.crafting.lastStrike.ageMs < 300 ? { animation: 'heat-pulse 0.2s' } : {}}>
+                  <div
+                    style={{
+                      width: `${(heat / 100) * 100}%`,
+                      height: '100%',
+                      background: heatColor,
+                      transition: 'width 0.1s linear',
+                    }}
+                  />
                   {/* Heat zone tick marks */}
                   {[35, 50, 62, 70, 85].map(heatVal => (
-                    <div key={heatVal} style={{
-                      position: 'absolute',
-                      left: `${heatVal}%`,
-                      top: 0,
-                      bottom: 0,
-                      width: '1px',
-                      background: heatVal === 62 ? '#22c55e' : '#555',
-                      opacity: 0.6,
-                    }} />
+                    <div
+                      key={heatVal}
+                      className={`heat-zone-tick${heatVal === 62 ? ' tick-perfect' : ''}`}
+                      style={{ left: `${heatVal}%` }}
+                    />
                   ))}
-                  {/* GOOD zone overlay (50–70) */}
-                  <div style={{
-                    position: 'absolute',
-                    left: '50%',
-                    top: 0,
-                    bottom: 0,
-                    width: '20%',
-                    background: 'rgba(34,197,94,0.1)',
-                    border: '1px dashed #22c55e',
-                  }} />
+                  {/* GOOD zone band */}
+                  <div className="heat-zone-band" style={{ left: '50%', width: '20%' }} />
                 </div>
               </div>
 
               {/* Advisory text */}
-              <div style={{ fontSize: '0.75rem', color: '#aaa', textAlign: 'center', marginTop: '4px', fontStyle: 'italic' }}>
+              <div
+                className={`forge-advisory${
+                  strikesRemaining > 0
+                    ? heat >= 50 && heat <= 75
+                      ? ' advisory-good'
+                      : heat < 50
+                        ? ' advisory-warn'
+                        : ' advisory-warn'
+                    : ' advisory-danger'
+                }`}
+              >
                 {strikesRemaining > 0
                   ? heat >= 50 && heat <= 75
-                    ? 'Strike now! (ideal quench zone)'
+                    ? '🟢 Strike now! (ideal quench zone)'
                     : heat < 50
-                      ? 'Heat up with Bellows'
-                      : 'Cool down before quenching'
-                  : `Quench now! (auto in ${Math.max(0, Math.round(autoQuenchMs / 1000))}s)`}
+                      ? '🔥 Heat up with Bellows'
+                      : '❄️ Cool down before quenching'
+                  : `⏱️ Quench now! (auto in ${Math.max(0, Math.round(autoQuenchMs / 1000))}s)`}
               </div>
 
               {/* Strike summary */}
-              <div style={{ fontSize: '0.8rem', color: '#aaa', textAlign: 'center', marginTop: '6px' }}>
-                Quality: <span style={{ color: '#22c55e' }}>{quality}</span> | Defects: <span style={{ color: '#ef4444' }}>{defects}</span> | Score: <span style={{ color: '#fbbf24' }}>{Math.round(score)} → {liveGrade}</span>
+              <div className="strike-summary">
+                Quality: <span style={{ color: '#22c55e' }}>{quality}</span> | Defects:{' '}
+                <span style={{ color: '#ef4444' }}>{defects}</span> | Score:{' '}
+                <span className="grade-preview">
+                  {Math.round(score)} → {liveGrade}
+                </span>
               </div>
 
               {/* Strikes remaining */}
-              <div style={{ fontSize: '0.8rem', color: '#aaa', textAlign: 'center', marginTop: '4px' }}>
-                Strikes: {strikesRemaining} remaining
+              <div className={`strike-count${strikesRemaining <= 2 ? ' strikes-critical' : ''}`}>
+                ⚡ Strikes: {strikesRemaining} remaining
               </div>
 
               {/* Hammer and Bellows buttons */}
-              <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+              <div className="forge-actions-row">
                 <div style={{ position: 'relative', flex: 1 }}>
                   <button
                     onClick={handleHammer}
                     disabled={!hammerReady || strikesRemaining <= 0}
-                    style={{
-                      width: '100%',
-                      opacity: hammerReady && strikesRemaining > 0 ? 1 : 0.6,
-                    }}
+                    className="action-btn"
+                    style={{ opacity: hammerReady && strikesRemaining > 0 ? 1 : 0.6 }}
                   >
                     🔨 Hammer
                     {hammerCd > 0 ? ` (${(hammerCd / 1000).toFixed(1)}s)` : ''}
@@ -570,10 +609,8 @@ function App() {
                 <button
                   onClick={handleBellows}
                   disabled={!bellowsReady}
-                  style={{
-                    flex: 1,
-                    opacity: bellowsReady ? 1 : 0.6,
-                  }}
+                  className="action-btn"
+                  style={{ opacity: bellowsReady ? 1 : 0.6 }}
                 >
                   💨 Bellows
                   {bellowsCd > 0 ? ` (${(bellowsCd / 1000).toFixed(1)}s)` : ''}
@@ -583,21 +620,7 @@ function App() {
               {/* Quench button */}
               <button
                 onClick={handleQuench}
-                style={{
-                  marginTop: '8px',
-                  width: '100%',
-                  background:
-                    heat > 75
-                      ? '#ef4444'
-                      : heat >= 50 && heat <= 75
-                        ? '#22c55e'
-                        : heat >= 35
-                          ? '#60a5fa'
-                          : '#7c3aed',
-                  color: heat > 75 || (heat >= 50 && heat <= 75) ? '#fff' : '#111',
-                  fontWeight: 'bold',
-                  fontSize: '1rem',
-                }}
+                className={`quench-btn ${quenchColor}`}
               >
                 🧊 Quench
                 {strikesRemaining <= 0 ? ` (auto in ${Math.max(0, Math.round(autoQuenchMs / 1000))}s)` : ''}
@@ -606,20 +629,20 @@ function App() {
               {/* Strike feedback */}
               {state.crafting?.lastStrike && state.crafting.lastStrike.ageMs < 1200 && (
                 <div
-                  style={{
-                    fontSize: '0.85rem',
-                    fontWeight: 'bold',
-                    textAlign: 'center',
-                    marginTop: '4px',
-                    color: state.crafting.lastStrike.zone === 'PERFECT' ? '#22c55e' : state.crafting.lastStrike.zone === 'GOOD' ? '#fbbf24' : '#ef4444',
-                    opacity: 1 - state.crafting.lastStrike.ageMs / 1200,
-                  }}
+                  className={`strike-feedback feedback-${
+                    state.crafting.lastStrike.zone === 'PERFECT'
+                      ? 'perfect'
+                      : state.crafting.lastStrike.zone === 'GOOD'
+                        ? 'good'
+                        : 'bad'
+                  }`}
+                  style={{ opacity: 1 - state.crafting.lastStrike.ageMs / 1200 }}
                 >
                   {state.crafting.lastStrike.zone === 'PERFECT'
-                    ? `PERFECT! +${state.crafting.lastStrike.qualityDelta}`
+                    ? `💚 PERFECT! +${state.crafting.lastStrike.qualityDelta}`
                     : state.crafting.lastStrike.zone === 'GOOD'
-                      ? `GOOD +${state.crafting.lastStrike.qualityDelta}`
-                      : `BAD +${state.crafting.lastStrike.qualityDelta} / +${state.crafting.lastStrike.defectDelta} defects`}
+                      ? `💛 GOOD +${state.crafting.lastStrike.qualityDelta}`
+                      : `💔 BAD +${state.crafting.lastStrike.qualityDelta} / +${state.crafting.lastStrike.defectDelta} defects`}
                 </div>
               )}
             </>
@@ -627,110 +650,40 @@ function App() {
 
           {/* Grade result */}
           {state.lastEvent && (
-            <div style={{
-              fontSize: '0.9rem',
-              fontWeight: 'bold',
-              color: state.lastEvent.grade === 'S' || state.lastEvent.grade === 'A' || state.lastEvent.grade === 'B' ? '#22c55e' : state.lastEvent.grade === 'C' ? '#fbbf24' : '#ef4444',
-              textAlign: 'center',
-              marginTop: '8px',
-            }}>
-              Grade: {state.lastEvent.grade} | +{state.lastEvent.goldGained}g · +{state.lastEvent.repGained} rep
+            <div
+              className={`grade-result grade-${
+                state.lastEvent.grade === 'S' || state.lastEvent.grade === 'A' || state.lastEvent.grade === 'B'
+                  ? 'good'
+                  : state.lastEvent.grade === 'C'
+                    ? 'mid'
+                    : 'bad'
+              }`}
+            >
+              Grade: <strong>{state.lastEvent.grade}</strong> | +{state.lastEvent.goldGained}g · +{state.lastEvent.repGained} rep
             </div>
           )}
 
           {/* FX overlays */}
-          {fx?.kind === 'CLANG' && (
-            <div className="clang-pop" key={fx.id}>CLANG!</div>
-          )}
-          {fx?.kind === 'GOLD' && (
-            <div className="gold-float" key={fx.id}>+{fx.amount}g</div>
-          )}
-          {fx?.kind === 'FAIL' && (
-            <div className="fail-flash" key={fx.id} />
-          )}
+          {fx?.kind === 'CLANG' && <div className="clang-pop" key={fx.id}>CLANG!</div>}
+          {fx?.kind === 'GOLD' && <div className="gold-float" key={fx.id}>+{fx.amount}g</div>}
+          {fx?.kind === 'FAIL' && <div className="fail-flash" key={fx.id} />}
         </div>
+      </main>
 
-        {/* Column 3 — Upgrades */}
-        <div className={tutorialStep === 3 ? 'tutorial-highlight' : ''}
-          onClick={() => tutorialStep === 3 && dismissTutorial()}
-          style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '8px',
-          border: '1px solid #2a2a2a',
-          borderRadius: '12px',
-          padding: '12px',
-        }}>
-          {tutorialStep === 3 && (
-            <div className="tutorial-chip">
-              <span>{TUTORIAL_MESSAGES[3]}</span>
-              <button onClick={(e) => { e.stopPropagation(); dismissTutorial(); }}>✕</button>
-            </div>
-          )}
-          <div className="section-heading">Upgrades</div>
-          {state.upgrades.map(upgrade => {
-            const baseCost = UPGRADE_BASE_COSTS[upgrade.id] ?? 0;
-            const cost = upgradeCost(baseCost, upgrade.level);
-            const isMaxed = upgrade.level >= upgrade.maxLevel;
-            const canAfford = state.gold >= cost;
-            const unlockRank = UPGRADE_UNLOCK_RANK[upgrade.id] ?? 0;
-            const isLocked = state.rankIndex < unlockRank;
-            return (
-              <div
-                key={upgrade.id}
-                className={isLocked ? 'upgrade-locked-card' : ''}
-                style={{
-                  border: '1px solid #2a2a2a',
-                  borderRadius: '10px',
-                  padding: '10px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '6px',
-                  background: '#0d0d0d',
-                }}
-              >
-                <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{upgrade.name}</div>
-                <div style={{ fontSize: '0.8rem', color: '#666' }}>
-                  Level {upgrade.level} / {upgrade.maxLevel}
-                </div>
-                <div style={{ fontSize: '0.78rem', color: '#888' }}>
-                  {upgradeEffectText(upgrade.id, upgrade.level)}
-                </div>
-                {!isMaxed && (
-                  <div style={{ fontSize: '0.8rem', color: '#aaa' }}>Next: {cost}g</div>
-                )}
-                {isLocked && (
-                  <div className="upgrade-unlock-hint">
-                    🔒 Reach {RANKS[unlockRank].name}
-                  </div>
-                )}
-                <button
-                  onClick={() => {
-                    if (isLocked) {
-                      setLockToast(`Unlocks at ${RANKS[unlockRank].name}`);
-                      setTimeout(() => setLockToast(null), 2000);
-                      return;
-                    }
-                    handleBuyUpgrade(upgrade.id);
-                  }}
-                  disabled={isMaxed || !canAfford || isLocked}
-                  style={
-                    isLocked
-                      ? { color: '#666', cursor: 'not-allowed' }
-                      : isMaxed
-                        ? { color: '#22c55e', fontWeight: 'bold' }
-                        : canAfford
-                          ? { background: '#7c3aed', color: '#fff' }
-                          : undefined
-                  }
-                >
-                  {isLocked ? `Locked (${RANKS[unlockRank].name})` : isMaxed ? 'MAX' : `Buy (${cost}g)`}
-                </button>
-              </div>
-            );
-          })}
-        </div>
+      {/* Bottom dock */}
+      <div className="bottom-dock">
+        <button
+          className={`dock-btn${tutorialStep === 0 ? ' tutorial-highlight' : ''}`}
+          onClick={() => setOpenDrawer('orders')}
+        >
+          📋 Orders
+        </button>
+        <button
+          className={`dock-btn${tutorialStep === 3 ? ' tutorial-highlight' : ''}`}
+          onClick={() => setOpenDrawer('upgrades')}
+        >
+          ⚙️ Upgrades
+        </button>
       </div>
     </div>
   );

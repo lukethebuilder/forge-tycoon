@@ -1,14 +1,21 @@
-/* ─── Root layout ─────────────────────────────────────────────────────────── */
+/* ─── Root layout ──────────────────────────────────────────────────────────── */
 
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  text-align: left;
-  position: relative;
-  z-index: 2;
+  width: 100%;
+  height: 100%;
 }
 
-/* ─── Vignette overlay ────────────────────────────────────────────────────── */
+/* ─── App shell ────────────────────────────────────────────────────────────── */
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  background: #12091a;
+}
+
+/* ─── Vignette overlay ─────────────────────────────────────────────────────── */
 
 .vignette {
   position: fixed;
@@ -18,7 +25,7 @@
   background: radial-gradient(ellipse at 50% 40%, transparent 50%, rgba(0, 0, 0, 0.65) 100%);
 }
 
-/* ─── Title bar ───────────────────────────────────────────────────────────── */
+/* ─── Title bar ────────────────────────────────────────────────────────────── */
 
 .title-bar {
   display: flex;
@@ -27,6 +34,7 @@
   padding: 12px 20px;
   background: #12091a;
   border-bottom: 2px solid #3a1a4a;
+  flex-shrink: 0;
 }
 
 .game-title {
@@ -47,7 +55,33 @@
   color: #c084fc;
 }
 
-/* ─── Section headings ────────────────────────────────────────────────────── */
+/* ─── HUD row ──────────────────────────────────────────────────────────────── */
+
+.hud-row {
+  padding: 8px 16px;
+  border-bottom: 1px solid #2a2a2a;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+  background: #0d0810;
+}
+
+/* ─── HUD objective ────────────────────────────────────────────────────────── */
+
+.hud-objective {
+  font-size: 0.78rem;
+  color: #22c55e;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  border-radius: 6px;
+  padding: 3px 10px;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+/* ─── Section headings ─────────────────────────────────────────────────────── */
 
 .section-heading {
   font-family: 'Cinzel', ui-serif, Georgia, serif;
@@ -60,15 +94,36 @@
   padding-bottom: 6px;
 }
 
-/* ─── Column highlights ───────────────────────────────────────────────────── */
+/* ─── Forge bench wrapper ──────────────────────────────────────────────────── */
 
-.forge-col {
-  position: relative;
-  border-color: #7c3aed !important;
-  box-shadow: 0 0 20px rgba(124, 58, 237, 0.12);
+.forge-bench-wrapper {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 16px;
+  padding-bottom: 0;
 }
 
-/* ─── Next goal ───────────────────────────────────────────────────────────── */
+/* ─── Forge bench panel ────────────────────────────────────────────────────── */
+
+.forge-bench {
+  width: 100%;
+  max-width: 640px;
+  background: #0f0814;
+  border: 1px solid #7c3aed;
+  border-radius: 16px;
+  padding: 20px;
+  position: relative;
+  box-shadow: 0 0 30px rgba(124, 58, 237, 0.15);
+}
+
+.forge-bench.forge-shake {
+  animation: shake 0.42s ease-in-out;
+}
+
+/* ─── Next goal ────────────────────────────────────────────────────────────── */
 
 .next-goal {
   background: #1e0a28;
@@ -78,68 +133,184 @@
   font-size: 0.85rem;
   color: #c084fc;
   text-align: center;
+  margin-bottom: 8px;
 }
 
-/* ─── Heat meter ──────────────────────────────────────────────────────────── */
+/* ─── Forge order summary ──────────────────────────────────────────────────── */
 
-.heat-bar-track {
-  background: #222;
-  border-radius: 6px;
-  height: 28px;
+.forge-order-summary {
+  border: 1px solid #2a2a2a;
+  border-radius: 10px;
+  padding: 12px;
+  background: #0d0d14;
+  margin-bottom: 12px;
+}
+
+.forge-order-summary.no-order {
+  border-style: dashed;
+  text-align: center;
+  padding: 20px;
+  color: #666;
+}
+
+.order-summary-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+
+.order-summary-item {
+  font-weight: bold;
+  font-size: 1rem;
+}
+
+.order-summary-tier {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.order-summary-meta {
+  font-size: 0.82rem;
+  color: #888;
+  margin-bottom: 4px;
+}
+
+.order-summary-flavor {
+  font-size: 0.72rem;
+  color: #555;
+  font-style: italic;
+  margin-top: 4px;
+}
+
+.forge-cta {
+  width: 100%;
+  font-size: 1rem;
+  padding: 12px;
+  background: #3a1a4a;
+  border: 1px solid #7c3aed;
+  color: #e2c97e;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.15s;
+  margin-top: 8px;
+}
+
+.forge-cta:hover {
+  background: #4c1a6a;
+}
+
+/* ─── Heat meter ───────────────────────────────────────────────────────────── */
+
+.heat-meter {
+  margin-bottom: 12px;
+}
+
+.heat-meter-label {
+  font-size: 0.8rem;
+  color: #aaa;
+  margin-bottom: 6px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.heat-meter-bar {
+  height: 36px;
+  background: #111;
+  border-radius: 8px;
   overflow: hidden;
   position: relative;
+  border: 1px solid #333;
+  transition: border-color 0.2s;
 }
 
-.heat-bar-fill {
+.heat-meter-bar.heat-pulse {
+  border-color: #fbbf24;
+  box-shadow: 0 0 12px rgba(251, 191, 36, 0.4);
+}
+
+.heat-meter-fill {
   height: 100%;
   transition: width 0.1s linear;
 }
 
-.heat-bar-tick {
+.heat-zone-tick {
   position: absolute;
   top: 0;
   bottom: 0;
-  width: 2px;
-  background: rgba(255, 255, 255, 0.25);
+  width: 1px;
+  background: #555;
+  opacity: 0.6;
 }
 
-/* ─── Forge action buttons ────────────────────────────────────────────────── */
-
-.forge-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.forge-actions button {
-  flex: 1;
-}
-
-/* ─── Quench button states ────────────────────────────────────────────────── */
-
-.quench-ideal {
+.heat-zone-tick.tick-perfect {
   background: #22c55e;
-  color: #fff;
-  font-weight: bold;
+  opacity: 0.8;
 }
 
-.quench-hot {
-  background: #ef4444;
-  color: #fff;
-  font-weight: bold;
+.heat-zone-band {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px dashed #22c55e;
 }
 
-.quench-cold {
-  background: #60a5fa;
-  color: #111;
-  font-weight: bold;
+.heat-zone-band.band-perfect {
+  background: rgba(34, 197, 94, 0.15);
 }
 
-/* ─── Strike summary ────────────────────────────────────────────────────────── */
+/* ─── Advisory text ────────────────────────────────────────────────────────── */
+
+.forge-advisory {
+  font-size: 0.8rem;
+  text-align: center;
+  margin: 6px 0;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-style: italic;
+}
+
+.forge-advisory.advisory-good {
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.08);
+}
+
+.forge-advisory.advisory-warn {
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.forge-advisory.advisory-danger {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.forge-advisory.advisory-neutral {
+  color: #aaa;
+}
+
+/* ─── Strike summary ───────────────────────────────────────────────────────── */
 
 .strike-summary {
   font-size: 0.8rem;
   color: #aaa;
   text-align: center;
+  margin-bottom: 8px;
+}
+
+.strike-count {
+  font-size: 0.8rem;
+  color: #aaa;
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.strike-count.strikes-critical {
+  color: #ef4444;
+  font-weight: bold;
 }
 
 .grade-preview {
@@ -147,90 +318,449 @@
   font-weight: bold;
 }
 
-/* ─── Grade result ────────────────────────────────────────────────────────── */
+/* ─── Action buttons ───────────────────────────────────────────────────────── */
+
+.forge-actions-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.action-btn {
+  flex: 1;
+  padding: 14px 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  border: 1px solid #3a1a4a;
+  background: #1e0a28;
+  color: #c084fc;
+}
+
+.action-btn:hover:not(:disabled) {
+  background: #2a1540;
+  border-color: #7c3aed;
+}
+
+.action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ─── Quench button ────────────────────────────────────────────────────────── */
+
+.quench-btn {
+  width: 100%;
+  padding: 14px;
+  font-size: 1.05rem;
+  font-weight: bold;
+  border-radius: 10px;
+  cursor: pointer;
+  margin-bottom: 8px;
+  transition: background 0.15s;
+  border: none;
+}
+
+.quench-ideal {
+  background: #22c55e;
+  color: #fff;
+}
+
+.quench-ideal:hover {
+  background: #16a34a;
+}
+
+.quench-hot {
+  background: #ef4444;
+  color: #fff;
+}
+
+.quench-hot:hover {
+  background: #dc2626;
+}
+
+.quench-cold {
+  background: #60a5fa;
+  color: #111;
+}
+
+.quench-cold:hover {
+  background: #3b82f6;
+}
+
+.quench-neutral {
+  background: #7c3aed;
+  color: #fff;
+}
+
+.quench-neutral:hover {
+  background: #6d28d9;
+}
+
+/* ─── Strike feedback ──────────────────────────────────────────────────────── */
+
+.strike-feedback {
+  font-size: 0.85rem;
+  font-weight: bold;
+  text-align: center;
+  margin-top: 4px;
+  margin-bottom: 8px;
+}
+
+.strike-feedback.feedback-perfect {
+  color: #22c55e;
+}
+
+.strike-feedback.feedback-good {
+  color: #fbbf24;
+}
+
+.strike-feedback.feedback-bad {
+  color: #ef4444;
+}
+
+/* ─── Grade result ─────────────────────────────────────────────────────────── */
 
 .grade-result {
   font-size: 0.9rem;
   font-weight: bold;
   text-align: center;
+  margin-top: 8px;
+  padding: 8px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.3);
 }
 
-/* ─── Forge shake ─────────────────────────────────────────────────────────── */
-
-.forge-shake {
-  animation: shake 0.42s ease-in-out;
+.grade-result.grade-good {
+  color: #22c55e;
 }
 
-/* ─── CLANG pop ───────────────────────────────────────────────────────────── */
+.grade-result.grade-mid {
+  color: #fbbf24;
+}
 
-.clang-pop {
-  position: absolute;
-  top: 38%;
-  left: 50%;
+.grade-result.grade-bad {
+  color: #ef4444;
+}
+
+/* ─── Bottom dock ──────────────────────────────────────────────────────────── */
+
+.bottom-dock {
+  flex-shrink: 0;
+  display: flex;
+  gap: 12px;
+  padding: 12px 16px 16px;
+  background: #0d0810;
+  border-top: 1px solid #2a2a2a;
+}
+
+.dock-btn {
+  flex: 1;
+  padding: 12px 8px;
   font-family: 'Cinzel', ui-serif, Georgia, serif;
-  font-size: 2rem;
-  font-weight: 700;
-  color: #fbbf24;
-  pointer-events: none;
-  animation: clang-pop 0.8s ease-out forwards;
-  z-index: 10;
-  white-space: nowrap;
-  text-shadow: 0 0 12px #fbbf2488;
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  background: #1a0f2e;
+  border: 1px solid #3a1a4a;
+  color: #c084fc;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
 }
 
-/* ─── Sparks ──────────────────────────────────────────────────────────────── */
-
-.sparks-container {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  pointer-events: none;
-  z-index: 10;
+.dock-btn:hover {
+  background: #2a1540;
+  border-color: #7c3aed;
 }
 
-.spark {
-  position: absolute;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #fbbf24;
-  box-shadow: 0 0 4px #fbbf24;
-  animation: spark-fly 0.6s ease-out forwards;
-  top: -3px;
-  left: -3px;
+.dock-btn.dock-active {
+  background: #3a1a4a;
+  border-color: #7c3aed;
+  color: #e2c97e;
 }
 
-/* ─── Floating gold ───────────────────────────────────────────────────────── */
+/* ─── Drawer backdrop ──────────────────────────────────────────────────────── */
 
-.gold-float {
-  position: absolute;
-  right: 20px;
-  top: 28%;
-  font-size: 1.5rem;
-  font-weight: bold;
-  color: #fbbf24;
-  text-shadow: 0 0 8px #fbbf2466;
-  pointer-events: none;
-  animation: gold-float 1.3s ease-out forwards;
-  z-index: 10;
-}
-
-/* ─── Fail flash ──────────────────────────────────────────────────────────── */
-
-.fail-flash {
-  position: absolute;
+.drawer-backdrop {
+  position: fixed;
   inset: 0;
-  background: #ef4444;
-  border-radius: inherit;
+  background: rgba(0, 0, 0, 0);
+  z-index: 50;
   pointer-events: none;
-  animation: fail-flash 0.6s ease-out forwards;
-  z-index: 5;
+  transition: background 0.25s;
 }
 
-/* ─── Canvas stamp ────────────────────────────────────────────────────────── */
+.drawer-backdrop.backdrop-visible {
+  background: rgba(0, 0, 0, 0.6);
+  pointer-events: all;
+}
 
-.canvas-stamp-glow {
-  animation: stamp-in 0.3s ease-out forwards;
+/* ─── Drawers ──────────────────────────────────────────────────────────────── */
+
+.drawer {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  width: 380px;
+  background: #0f0814;
+  border: 1px solid #2a2a2a;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.drawer-orders {
+  left: 0;
+  border-right-color: #3a1a4a;
+  transform: translateX(-100%);
+}
+
+.drawer-orders.drawer-open {
+  transform: translateX(0);
+}
+
+.drawer-upgrades {
+  right: 0;
+  border-left-color: #3a1a4a;
+  transform: translateX(100%);
+}
+
+.drawer-upgrades.drawer-open {
+  transform: translateX(0);
+}
+
+/* Mobile drawers — slide up from bottom */
+@media (max-width: 640px) {
+  .drawer {
+    top: auto;
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: 78vh;
+    border-radius: 16px 16px 0 0;
+    border-bottom: none;
+  }
+
+  .drawer-orders {
+    transform: translateY(100%);
+  }
+
+  .drawer-orders.drawer-open {
+    transform: translateY(0);
+  }
+
+  .drawer-upgrades {
+    transform: translateY(100%);
+  }
+
+  .drawer-upgrades.drawer-open {
+    transform: translateY(0);
+  }
+}
+
+/* ─── Drawer header ────────────────────────────────────────────────────────── */
+
+.drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid #2a2a2a;
+  flex-shrink: 0;
+  background: #12091a;
+}
+
+.drawer-header .section-heading {
+  margin-bottom: 0;
+}
+
+.drawer-close {
+  background: none;
+  border: none;
+  color: #666;
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: color 0.15s;
+}
+
+.drawer-close:hover {
+  color: #aaa;
+  background: #1a1a1a;
+}
+
+/* ─── Drawer scroll area ───────────────────────────────────────────────────── */
+
+.drawer-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ─── Order cards in drawer ────────────────────────────────────────────────── */
+
+.order-card {
+  width: 100%;
+  border: 1px solid #2a2a2a;
+  border-radius: 10px;
+  padding: 12px;
+  text-align: left;
+  background: #0d0d14;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  font-family: inherit;
+  font-size: 0.95rem;
+}
+
+.order-card:hover {
+  border-color: #4a2a6a;
+  background: #110d1e;
+}
+
+.order-card.order-selected {
+  border: 2px solid #7c3aed;
+  background: #1a0f2e;
+}
+
+.order-card.order-featured {
+  border-color: #a855f7;
+  background: #120a20;
+}
+
+.order-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 4px;
+}
+
+.order-item {
+  font-weight: bold;
+  font-size: 0.95rem;
+}
+
+.order-tier {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.order-meta {
+  font-size: 0.82rem;
+  color: #888;
+}
+
+.order-flavor {
+  font-size: 0.72rem;
+  color: #555;
+  font-style: italic;
+  margin-top: 4px;
+}
+
+/* ─── Upgrade cards in drawer ──────────────────────────────────────────────── */
+
+.upgrade-card-drawer {
+  border: 1px solid #222;
+  border-radius: 10px;
+  padding: 12px;
+  background: #0d0d0d;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.upgrade-card-drawer .upgrade-name {
+  font-weight: bold;
+  font-size: 0.9rem;
+}
+
+.upgrade-card-drawer .upgrade-level {
+  font-size: 0.8rem;
+  color: #666;
+}
+
+.upgrade-card-drawer .upgrade-effect {
+  font-size: 0.78rem;
+  color: #888;
+}
+
+.upgrade-card-drawer .upgrade-cost {
+  font-size: 0.8rem;
+  color: #aaa;
+}
+
+.upgrade-card-drawer .upgrade-hint {
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.upgrade-card-drawer button {
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid #3a1a4a;
+  background: #1a0f2e;
+  color: #c084fc;
+  transition: background 0.15s;
+}
+
+.upgrade-card-drawer button:hover:not(:disabled) {
+  background: #2a1540;
+  border-color: #7c3aed;
+}
+
+.upgrade-card-drawer button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.upgrade-card-drawer.upgrade-locked-card {
+  opacity: 0.5;
+}
+
+/* ─── Tutorial highlighting ────────────────────────────────────────────────── */
+
+.tutorial-highlight {
+  border: 2px solid #f59e0b !important;
+  animation: tutorial-pulse 2s ease-in-out infinite;
+}
+
+.tutorial-chip {
+  background: #1a1000;
+  border: 1px solid #f59e0b;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  color: #fbbf24;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.tutorial-chip button {
+  background: none;
+  border: none;
+  color: #666;
+  font-size: 0.75rem;
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+  transition: color 0.2s;
+}
+
+.tutorial-chip button:hover {
+  color: #aaa;
 }
 
 /* ─── Intro modal ──────────────────────────────────────────────────────────── */
@@ -297,64 +827,79 @@
   background: #4c1a6a;
 }
 
-/* ─── Tutorial highlighting ───────────────────────────────────────────────── */
+/* ─── CLANG pop ────────────────────────────────────────────────────────────── */
 
-.tutorial-highlight {
-  border: 2px solid #f59e0b !important;
-  animation: tutorial-pulse 2s ease-in-out infinite;
-}
-
-.tutorial-chip {
-  background: #1a1000;
-  border: 1px solid #f59e0b;
-  border-radius: 8px;
-  padding: 6px 12px;
-  font-size: 0.8rem;
+.clang-pop {
+  position: absolute;
+  top: 38%;
+  left: 50%;
+  font-family: 'Cinzel', ui-serif, Georgia, serif;
+  font-size: 2rem;
+  font-weight: 700;
   color: #fbbf24;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 4px;
-}
-
-.tutorial-chip button {
-  background: none;
-  border: none;
-  color: #666;
-  font-size: 0.75rem;
-  cursor: pointer;
-  padding: 0;
-  margin: 0;
-  transition: color 0.2s;
-}
-
-.tutorial-chip button:hover {
-  color: #aaa;
-}
-
-/* ─── HUD objective ───────────────────────────────────────────────────────── */
-
-.hud-objective {
-  font-size: 0.78rem;
-  color: #22c55e;
-  border: 1px solid rgba(34, 197, 94, 0.3);
-  border-radius: 6px;
-  padding: 3px 10px;
-  margin-left: auto;
+  pointer-events: none;
+  animation: clang-pop 0.8s ease-out forwards;
+  z-index: 10;
   white-space: nowrap;
+  text-shadow: 0 0 12px #fbbf2488;
 }
 
-/* ─── Upgrade locked state ────────────────────────────────────────────────── */
+/* ─── Sparks ───────────────────────────────────────────────────────────────── */
 
-.upgrade-locked-card {
-  opacity: 0.5;
+.sparks-container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  pointer-events: none;
+  z-index: 10;
 }
 
-.upgrade-unlock-hint {
-  font-size: 0.75rem;
-  color: #9ca3af;
-  margin-top: 2px;
+.spark {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #fbbf24;
+  box-shadow: 0 0 4px #fbbf24;
+  animation: spark-fly 0.6s ease-out forwards;
+  top: -3px;
+  left: -3px;
 }
+
+/* ─── Floating gold ────────────────────────────────────────────────────────── */
+
+.gold-float {
+  position: absolute;
+  right: 20px;
+  top: 28%;
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #fbbf24;
+  text-shadow: 0 0 8px #fbbf2466;
+  pointer-events: none;
+  animation: gold-float 1.3s ease-out forwards;
+  z-index: 10;
+}
+
+/* ─── Fail flash ───────────────────────────────────────────────────────────── */
+
+.fail-flash {
+  position: absolute;
+  inset: 0;
+  background: #ef4444;
+  border-radius: inherit;
+  pointer-events: none;
+  animation: fail-flash 0.6s ease-out forwards;
+  z-index: 5;
+}
+
+/* ─── Canvas stamp ─────────────────────────────────────────────────────────── */
+
+.canvas-stamp-glow {
+  animation: stamp-in 0.3s ease-out forwards;
+}
+
+/* ─── Lock toast ───────────────────────────────────────────────────────────── */
 
 .lock-toast {
   position: fixed;
@@ -369,4 +914,106 @@
   padding: 8px 20px;
   z-index: 300;
   pointer-events: none;
+}
+
+/* ─── Keyframe animations ──────────────────────────────────────────────────── */
+
+@keyframes heat-pulse {
+  0% {
+    box-shadow: 0 0 0 2px #fbbf24;
+  }
+  100% {
+    box-shadow: none;
+  }
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-4px) rotate(-0.4deg);
+  }
+  40% {
+    transform: translateX(4px) rotate(0.4deg);
+  }
+  60% {
+    transform: translateX(-3px);
+  }
+  80% {
+    transform: translateX(3px);
+  }
+}
+
+@keyframes clang-pop {
+  0% {
+    opacity: 1;
+    transform: translateX(-50%) scale(0.5) translateY(0);
+  }
+  60% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1.3) translateY(-12px);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) scale(1.1) translateY(-24px);
+  }
+}
+
+@keyframes spark-fly {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--tx), var(--ty)) scale(0);
+  }
+}
+
+@keyframes gold-float {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-60px);
+  }
+}
+
+@keyframes fail-flash {
+  0%,
+  50% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes stamp-in {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes tutorial-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 8px #f59e0b;
+  }
+  50% {
+    box-shadow: 0 0 22px #f59e0b, 0 0 44px rgba(245, 158, 11, 0.25);
+  }
 }
