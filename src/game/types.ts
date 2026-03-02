@@ -2,6 +2,10 @@
 
 export type WorkFocus = 'RUSH' | 'CAREFUL';
 
+export type Grade = 'S' | 'A' | 'B' | 'C' | 'F';
+
+export type StrikeZone = 'PERFECT' | 'GOOD' | 'TOO_HOT' | 'DANGER' | 'COOL' | 'COLD';
+
 export type CustomerTier = 'ROOKIE' | 'REGULAR' | 'NOBLE';
 
 export type ItemType =
@@ -27,10 +31,20 @@ export interface Upgrade {
 
 export interface CraftingState {
   orderId: string;
-  remainingMs: number;
-  totalMs: number;
-  payoutSnapshot: number;
+  heat: number;
+  quality: number;
+  defects: number;
   hammerCooldownMs: number;
+  bellowsCooldownMs: number;
+  payoutSnapshot: number;
+  strikesRemaining: number;
+  autoQuenchMs: number;
+  lastStrike?: {
+    zone: StrikeZone;
+    qualityDelta: number;
+    defectDelta: number;
+    ageMs: number;
+  };
 }
 
 export interface FeaturedRunObstacle {
@@ -40,16 +54,14 @@ export interface FeaturedRunObstacle {
 
 export interface FeaturedRun {
   id: string;           // orderId — used as seed for deterministic obstacles
-  success: boolean;
+  grade: Grade;
   obstacles: FeaturedRunObstacle[];
   itemType: string;
   tier: CustomerTier;
-  focus: WorkFocus;
 }
 
 export interface GameState {
   gold: number;
-  focus: WorkFocus;
   activeOrderId?: string;
   crafting?: CraftingState;
   upgrades: Upgrade[];
@@ -60,7 +72,7 @@ export interface GameState {
   lastEvent?: {
     kind: 'DELIVERED';
     featured: boolean;
-    success: boolean;
+    grade: Grade;
     repGained: number;
     goldGained: number;
   };

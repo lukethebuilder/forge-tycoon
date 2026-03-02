@@ -29,20 +29,96 @@ export const ITEM_FLAVOR_LINES: Record<string, string[]> = {
   'Swift Boots':  ["Fast feet save lives around here.", "Built for someone who never stops moving.", "Light as a promise, strong as spite."],
 };
 
-export const FOCUS_TIME_MULTIPLIERS: Record<'RUSH' | 'CAREFUL', number> = {
-  RUSH: 0.75,
-  CAREFUL: 1.25,
+// ─── Heat system (arcade minigame) ────────────────────────────────────────────
+
+export const HEAT_START = 60;
+export const HEAT_DRIFT_PER_TICK = 2.0; // units lost per 250ms tick (base)
+export const HEAT_DRIFT_APPRENTICE_PER_LEVEL = 0.05; // units saved per tick per Apprentice level
+export const HEAT_MAX = 100;
+export const HEAT_MIN = 0;
+
+// ─── Bellows (heating) ────────────────────────────────────────────────────────
+
+export const BELLOWS_HEAT_BASE = 15;
+export const BELLOWS_HEAT_PER_LEVEL = 3; // additional heat per Bellows upgrade level
+export const BELLOWS_COOLDOWN_MS = 800;
+
+// ─── Hammer (striking) ────────────────────────────────────────────────────────
+
+export const HAMMER_COOLDOWN_MS = 800;
+
+// ─── Hammer zones (base thresholds; Tongs widens dynamically) ─────────────────
+
+export const HEAT_PERFECT_LO = 58;
+export const HEAT_PERFECT_HI = 62;
+export const HEAT_GOOD_LO = 50;
+export const HEAT_GOOD_HI = 70;
+export const HEAT_TOO_HOT_HI = 85; // TOO_HOT = 71–85, DANGER = >85
+
+export const HAMMER_QUALITY: Record<string, number> = {
+  PERFECT: 12,
+  GOOD: 8,
+  TOO_HOT: 4,
+  DANGER: 2,
+  COOL: 3,
+  COLD: 1,
 };
 
-export const FOCUS_PAYOUT_MULTIPLIERS: Record<'RUSH' | 'CAREFUL', number> = {
-  RUSH: 0.75,
-  CAREFUL: 1.25,
+export const HAMMER_DEFECTS: Record<string, number> = {
+  PERFECT: 0,
+  GOOD: 0,
+  TOO_HOT: 5,
+  DANGER: 12,
+  COOL: 2,
+  COLD: 5,
 };
 
-export const HAMMER_BURST_MS = 500;
-export const HAMMER_COOLDOWN_MS = 1000;
+// ─── Tongs (widens sweet spot) ───────────────────────────────────────────────
 
-export const MIN_CRAFT_MS = 1200;
+export const TONGS_GOOD_WIDEN_PER_LEVEL = 2;
+export const TONGS_PERFECT_WIDEN_MAX = 1; // hard cap for PERFECT zone
+
+// ─── Quench decision ─────────────────────────────────────────────────────────
+
+export const QUENCH_HOT_THRESHOLD = 75;
+export const QUENCH_COLD_THRESHOLD = 35;
+export const QUENCH_HOT_CRACK_FRACTION = 0.40; // 40% of quality becomes defects
+export const QUENCH_IDEAL_BONUS = 8;
+export const QUENCH_OVERCOOLED_PENALTY = 5;
+
+// ─── Strike limits (anti-farming) ────────────────────────────────────────────
+
+export const MAX_STRIKES: Record<'ROOKIE' | 'REGULAR' | 'NOBLE', number> = {
+  ROOKIE: 8,
+  REGULAR: 10,
+  NOBLE: 12,
+};
+
+export const AUTO_QUENCH_MS = 2000; // auto-quench countdown after strikes hit 0
+export const AUTO_QUENCH_PENALTY_DEFECTS = 5; // penalty for forgetting to quench
+
+// ─── Grade thresholds ────────────────────────────────────────────────────────
+
+export const GRADE_S_THRESHOLD = 60;
+export const GRADE_A_THRESHOLD = 45;
+export const GRADE_B_THRESHOLD = 30;
+export const GRADE_C_THRESHOLD = 15;
+
+export const GRADE_PAYOUT_MULT: Record<string, number> = {
+  S: 1.5,
+  A: 1.2,
+  B: 1.0,
+  C: 0.6,
+  F: 0.2,
+};
+
+export const GRADE_REP_MULT: Record<string, number> = {
+  S: 1.5,
+  A: 1.2,
+  B: 1.0,
+  C: 0.5,
+  F: 0.0,
+};
 
 // ─── Customer tiers ───────────────────────────────────────────────────────────
 
@@ -91,27 +167,24 @@ export const EVENT_TRIGGER_EVERY = 5; // start an event every N deliveries
 export const TONGS_UPGRADE_ID = 'tongs';
 export const TONGS_BASE_COST = 80;
 export const TONGS_MAX_LEVEL = 5;
-export const TONGS_TIME_REDUCTION_PER_LEVEL = 0.08; // −8% craft time per level
 
 export const BELLOWS_UPGRADE_ID = 'bellows';
 export const BELLOWS_BASE_COST = 100;
 export const BELLOWS_MAX_LEVEL = 6;
-export const BELLOWS_PAYOUT_MULT_PER_LEVEL = 0.06; // +6% payout per level
 
 export const POLISH_UPGRADE_ID = 'polish';
 export const POLISH_BASE_COST = 120;
 export const POLISH_MAX_LEVEL = 5;
-export const POLISH_REP_BONUS_PER_LEVEL = 2; // +2 rep/success per level
+export const POLISH_REP_BONUS_PER_LEVEL = 2; // +2 rep/grade per level
 
 export const APPRENTICE_UPGRADE_ID = 'apprentice';
 export const APPRENTICE_BASE_COST = 150;
 export const APPRENTICE_MAX_LEVEL = 5;
-export const APPRENTICE_PASSIVE_CRAFT_BONUS_MS_PER_TICK = 50; // extra ms reduction per tick per level
 
 export const OILSTONE_UPGRADE_ID = 'oilstone';
 export const OILSTONE_BASE_COST = 90;
 export const OILSTONE_MAX_LEVEL = 5;
-export const OILSTONE_SUCCESS_BONUS_PER_LEVEL = 0.02; // +2% success chance per level
+export const OILSTONE_DEFECT_REDUCTION_PER_LEVEL = 1; // reduces defects per bad strike per level
 
 export const FRONT_SIGN_UPGRADE_ID = 'front_sign';
 export const FRONT_SIGN_BASE_COST = 110;
@@ -159,11 +232,6 @@ export const UPGRADE_UNLOCK_RANK: Record<string, number> = {
   [FRONT_SIGN_UPGRADE_ID]:  2,  // Craftsman
 };
 
-// ─── Success / reputation ────────────────────────────────────────────────────
+// ─── Reputation ──────────────────────────────────────────────────────────────
 
-export const BASE_SUCCESS_CHANCE = 0.70;
-export const FOCUS_SUCCESS_MODIFIERS: Record<'RUSH' | 'CAREFUL', number> = {
-  RUSH: -0.15,
-  CAREFUL: 0.10,
-};
 export const REP_GAIN_BASE = 10;

@@ -1,38 +1,48 @@
 // FILE: src/App.tsx
 
 import { useState, useEffect, useRef } from 'react';
-import type { GameState, Order } from './game/types';
+import type { GameState, Order, Grade } from './game/types';
 import {
   initState,
   tick,
   selectOrder,
-  setFocus,
   startCraft,
   hammer,
-  deliver,
+  bellows,
+  quench,
   buyUpgrade,
   clearFeaturedRun,
 } from './game/engine';
 import {
   TONGS_UPGRADE_ID,
-  TONGS_TIME_REDUCTION_PER_LEVEL,
+  TONGS_GOOD_WIDEN_PER_LEVEL,
+  TONGS_PERFECT_WIDEN_MAX,
   BELLOWS_UPGRADE_ID,
-  BELLOWS_PAYOUT_MULT_PER_LEVEL,
+  BELLOWS_HEAT_BASE,
+  BELLOWS_HEAT_PER_LEVEL,
+  BELLOWS_COOLDOWN_MS,
   POLISH_UPGRADE_ID,
   POLISH_REP_BONUS_PER_LEVEL,
   APPRENTICE_UPGRADE_ID,
-  APPRENTICE_PASSIVE_CRAFT_BONUS_MS_PER_TICK,
+  HEAT_DRIFT_APPRENTICE_PER_LEVEL,
   OILSTONE_UPGRADE_ID,
-  OILSTONE_SUCCESS_BONUS_PER_LEVEL,
+  OILSTONE_DEFECT_REDUCTION_PER_LEVEL,
   FRONT_SIGN_UPGRADE_ID,
-  FOCUS_TIME_MULTIPLIERS,
-  FOCUS_PAYOUT_MULTIPLIERS,
+  HEAT_START,
+  HEAT_DRIFT_PER_TICK,
+  HEAT_PERFECT_LO,
+  HEAT_PERFECT_HI,
+  HEAT_GOOD_LO,
+  HEAT_GOOD_HI,
+  HEAT_TOO_HOT_HI,
+  HAMMER_COOLDOWN_MS,
+  GRADE_PAYOUT_MULT,
+  GRADE_REP_MULT,
   TIER_MULTIPLIERS,
   UPGRADE_BASE_COSTS,
   upgradeCost,
   RANKS,
   EVENTS,
-  MIN_CRAFT_MS,
   ITEM_FLAVOR_LINES,
   UPGRADE_UNLOCK_RANK,
 } from './game/balance';
@@ -68,15 +78,15 @@ function hashId(id: string): number {
 
 function upgradeEffectText(id: string, level: number): string {
   if (id === TONGS_UPGRADE_ID)
-    return `\u2212${(level * TONGS_TIME_REDUCTION_PER_LEVEL * 100).toFixed(0)}% craft time`;
+    return level === 0 ? 'Widens sweet spot' : `Sweet spot +${level * TONGS_GOOD_WIDEN_PER_LEVEL * 2} wider`;
   if (id === BELLOWS_UPGRADE_ID)
-    return `+${(level * BELLOWS_PAYOUT_MULT_PER_LEVEL * 100).toFixed(0)}% payout`;
+    return `Bellows: +${BELLOWS_HEAT_BASE + level * BELLOWS_HEAT_PER_LEVEL} heat`;
   if (id === POLISH_UPGRADE_ID)
-    return `+${level * POLISH_REP_BONUS_PER_LEVEL} rep/success`;
+    return `+${level * POLISH_REP_BONUS_PER_LEVEL} rep/delivery`;
   if (id === APPRENTICE_UPGRADE_ID)
-    return `+${level * APPRENTICE_PASSIVE_CRAFT_BONUS_MS_PER_TICK}ms passive/tick`;
+    return level === 0 ? 'Slows heat drift' : `\u22122.4 heat/sec drift`;
   if (id === OILSTONE_UPGRADE_ID)
-    return `+${(level * OILSTONE_SUCCESS_BONUS_PER_LEVEL * 100).toFixed(0)}% success chance`;
+    return level === 0 ? 'Reduces bad-strike defects' : `\u22121 defect/bad strike`;
   if (id === FRONT_SIGN_UPGRADE_ID)
     return `+${level} weight toward higher-tier customers`;
   return '';
@@ -109,13 +119,19 @@ function App() {
 
   // ─── Derived values ────────────────────────────────────────────────────────
 
-  const tongs = state.upgrades.find(u => u.id === TONGS_UPGRADE_ID)!;
   const isCrafting = state.crafting !== undefined;
-  const craftDone = isCrafting && state.crafting!.remainingMs === 0;
-  const progressFraction =
-    isCrafting && state.crafting!.totalMs > 0
-      ? 1 - state.crafting!.remainingMs / state.crafting!.totalMs
-      : 0;
+  const heat = state.crafting?.heat ?? 0;
+  const quality = state.crafting?.quality ?? 0;
+  const defects = state.crafting?.defects ?? 0;
+  const strikesRemaining = state.crafting?.strikesRemaining ?? 0;
+  const hammerCd = state.crafting?.hammerCooldownMs ?? 0;
+  const bellowsCd = state.crafting?.bellowsCooldownMs ?? 0;
+  const autoQuenchMs = state.crafting?.autoQuenchMs ?? 0;
+
+  const score = quality - defects * 1.5;
+  const liveGrade: Grade = score >= 60 ? 'S' : score >= 45 ? 'A' : score >= 30 ? 'B' : score >= 15 ? 'C' : 'F';
+  const hammerReady = isCrafting && hammerCd === 0;
+  const bellowsReady = isCrafting && bellowsCd === 0;
 
   const currentRank = RANKS[state.rankIndex];
   const nextRank = RANKS[state.rankIndex + 1];
@@ -150,33 +166,22 @@ function App() {
     return `${nextRank.xpRequired - state.repXp} rep → ${nextRank.name}`;
   }
 
-  function previewTime(order: Order): string {
-    const tierMult = TIER_MULTIPLIERS[order.customerTier].timeMult;
-    const reduction = 1 - tongs.level * TONGS_TIME_REDUCTION_PER_LEVEL;
-    const eventTimeMult = eventDef?.timeMult ?? 1;
-    const ms = Math.max(MIN_CRAFT_MS, Math.round(
-      order.baseTimeSec * FOCUS_TIME_MULTIPLIERS[state.focus] * tierMult * reduction * eventTimeMult * 1000,
-    ));
-    return (ms / 1000).toFixed(1) + 's';
+  function previewTime(_order: Order): string {
+    return 'Interactive';
   }
 
   function previewPayout(order: Order): string {
     const tierMult = TIER_MULTIPLIERS[order.customerTier].payoutMult;
-    const bellowsLevel = state.upgrades.find(u => u.id === BELLOWS_UPGRADE_ID)?.level ?? 0;
-    const bellowsMult = 1 + bellowsLevel * BELLOWS_PAYOUT_MULT_PER_LEVEL;
     const eventPayoutMult = eventDef?.payoutMult ?? 1;
-    return (
-      Math.round(order.basePayout * FOCUS_PAYOUT_MULTIPLIERS[state.focus] * tierMult * bellowsMult * eventPayoutMult) +
-      'g'
-    );
+    return Math.round(order.basePayout * tierMult * eventPayoutMult) + 'g (×grade)';
   }
 
   // ─── Tutorial helpers ──────────────────────────────────────────────────────
 
   const TUTORIAL_MESSAGES: Record<number, string> = {
     0: 'Pick an order to craft.',
-    1: 'Choose Rush (fast cash) or Careful (more rep).',
-    2: 'Start Craft — then Deliver when it\'s done.',
+    1: 'Manage heat with Bellows, strike at the right zones, then Quench.',
+    2: 'Your strikes and heat timing determine quality. Better heat = better grades!',
     3: 'Buy your first upgrade to improve the forge.',
   };
 
@@ -191,10 +196,6 @@ function App() {
     setState(prev => selectOrder(prev, orderId));
   }
 
-  function handleSetFocus(focus: 'RUSH' | 'CAREFUL') {
-    setState(prev => setFocus(prev, focus));
-  }
-
   function handleStartCraft() {
     setState(prev => startCraft(prev));
     triggerFx({ kind: 'CLANG', id: Date.now() }, 800);
@@ -202,10 +203,9 @@ function App() {
 
   function handleHammer() {
     setState(prev => hammer(prev));
-    const t = Date.now();
     triggerFx({
       kind: 'SPARKS',
-      id: t,
+      id: Date.now(),
       sparks: Array.from({ length: 8 }, (_, i) => ({
         angle: (Math.PI * 2 * i) / 8 + Math.random() * 0.4,
         dist: 25 + Math.random() * 35,
@@ -213,14 +213,21 @@ function App() {
     }, 650);
   }
 
-  function handleDeliver() {
+  function handleBellows() {
+    setState(prev => bellows(prev));
+  }
+
+  function handleQuench() {
     setState(prev => {
-      const next = deliver(prev);
+      const next = quench(prev);
       saveState(next);
-      if (next.lastEvent?.success) {
-        triggerFx({ kind: 'GOLD', id: Date.now(), amount: next.lastEvent.goldGained }, 1300);
-      } else if (next.lastEvent) {
-        triggerFx({ kind: 'FAIL', id: Date.now() }, 600);
+      const ev = next.lastEvent;
+      if (ev) {
+        if (ev.grade === 'S' || ev.grade === 'A' || ev.grade === 'B') {
+          triggerFx({ kind: 'GOLD', id: Date.now(), amount: ev.goldGained }, 1300);
+        } else if (ev.grade === 'C' || ev.grade === 'F') {
+          triggerFx({ kind: 'FAIL', id: Date.now() }, 600);
+        }
       }
       return next;
     });
@@ -243,6 +250,17 @@ function App() {
       saveState(next);
       return next;
     });
+  }
+
+  function handleRestartGame() {
+    if (window.confirm('Restart the game? This will clear all progress.')) {
+      localStorage.removeItem('cf_seen_intro');
+      localStorage.removeItem('cf_seen_tutorial');
+      localStorage.removeItem('forge-tycoon-state');
+      setState(initState());
+      setShowIntro(true);
+      setTutorialStep(0);
+    }
   }
 
   // ─── Render ────────────────────────────────────────────────────────────────
@@ -290,6 +308,23 @@ function App() {
       <div className="title-bar">
         <span className="game-title">Crawlside Forge</span>
         <span className="rank-badge">⚔ {currentRank.name}</span>
+        <button
+          onClick={handleRestartGame}
+          style={{
+            marginLeft: 'auto',
+            padding: '4px 8px',
+            fontSize: '0.8rem',
+            background: 'transparent',
+            border: '1px solid #666',
+            color: '#999',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            opacity: 0.7,
+          }}
+          title="For testing only"
+        >
+          🔄 Restart (Testing)
+        </button>
       </div>
 
       {/* HUD */}
@@ -420,124 +455,186 @@ function App() {
             </div>
           )}
 
-          {/* Stance cards */}
-          <div className="stances">
-            {(['RUSH', 'CAREFUL'] as const).map(f => (
-              <div
-                key={f}
-                className={[
-                  'stance',
-                  f === 'RUSH' ? 'stance-rush' : 'stance-careful',
-                  state.focus === f ? 'stance-active' : '',
-                  isCrafting ? 'stance-disabled' : '',
-                ].filter(Boolean).join(' ')}
-                onClick={() => !isCrafting && handleSetFocus(f)}
-              >
-                <span className="stance-icon">{f === 'RUSH' ? '⚡' : '🎯'}</span>
-                <span className="stance-name">{f === 'RUSH' ? 'Rush' : 'Careful'}</span>
-                <span className="stance-flavor">
-                  {f === 'RUSH' ? 'Fast cash. Less rep.' : 'Slower. More rep.'}
-                </span>
-              </div>
-            ))}
-          </div>
 
-          {/* Start Craft */}
-          <button
-            onClick={handleStartCraft}
-            disabled={!state.activeOrderId || isCrafting}
-            style={{
-              marginTop: '4px',
-              fontSize: '1.05rem',
-              fontWeight: 'bold',
-              padding: '0.7em 1.2em',
-            }}
-          >
-            {isCrafting ? 'Crafting…' : 'Start Craft'}
-          </button>
-
-          {/* Progress bar */}
-          {isCrafting && (
-            <div style={{
-              background: '#222',
-              borderRadius: '6px',
-              height: '20px',
-              overflow: 'hidden',
-              marginTop: '4px',
-            }}>
-              <div style={{
-                width: `${progressFraction * 100}%`,
-                height: '100%',
-                background: craftDone ? '#22c55e' : '#7c3aed',
-                transition: 'width 0.25s linear',
-              }} />
-            </div>
-          )}
-
-          {isCrafting && (
-            <div style={{ fontSize: '0.8rem', color: '#aaa', textAlign: 'center' }}>
-              {craftDone
-                ? 'Done! Click Deliver.'
-                : `${(state.crafting!.remainingMs / 1000).toFixed(1)}s remaining`}
-            </div>
-          )}
-
-          {/* Hammer */}
-          <div style={{ position: 'relative' }}>
+          {!isCrafting && (
             <button
-              onClick={handleHammer}
-              disabled={
-                !isCrafting ||
-                (state.crafting?.hammerCooldownMs ?? 0) > 0 ||
-                craftDone
-              }
-              style={{ width: '100%' }}
+              onClick={handleStartCraft}
+              disabled={!state.activeOrderId}
+              style={{
+                marginTop: '4px',
+                fontSize: '1.05rem',
+                fontWeight: 'bold',
+                padding: '0.7em 1.2em',
+              }}
             >
-              🔨 Hammer!
-              {state.crafting && state.crafting.hammerCooldownMs > 0
-                ? ` (${(state.crafting.hammerCooldownMs / 1000).toFixed(1)}s)`
-                : ''}
+              Start Craft
             </button>
-            {fx?.kind === 'SPARKS' && (
-              <div className="sparks-container">
-                {fx.sparks.map((s, i) => (
-                  <div
-                    key={i}
-                    className="spark"
-                    style={{
-                      '--tx': `${Math.cos(s.angle) * s.dist}px`,
-                      '--ty': `${Math.sin(s.angle) * s.dist}px`,
-                    } as React.CSSProperties}
-                  />
-                ))}
+          )}
+
+          {isCrafting && (
+            <>
+              {/* Heat meter */}
+              <div style={{ marginTop: '8px' }}>
+                <div style={{ fontSize: '0.8rem', color: '#aaa', marginBottom: '4px' }}>
+                  Heat: {Math.round(heat)}°
+                </div>
+                <div style={{
+                  background: '#222',
+                  borderRadius: '6px',
+                  height: '28px',
+                  overflow: 'hidden',
+                  position: 'relative',
+                }}>
+                  <div style={{
+                    width: `${(heat / 100) * 100}%`,
+                    height: '100%',
+                    background: heat < 35 ? '#60a5fa' : heat < 70 ? '#f59e0b' : '#ef4444',
+                    transition: 'width 0.1s linear',
+                  }} />
+                  {/* Heat zone tick marks */}
+                  {[35, 50, 62, 70, 85].map(heatVal => (
+                    <div key={heatVal} style={{
+                      position: 'absolute',
+                      left: `${heatVal}%`,
+                      top: 0,
+                      bottom: 0,
+                      width: '1px',
+                      background: heatVal === 62 ? '#22c55e' : '#555',
+                      opacity: 0.6,
+                    }} />
+                  ))}
+                  {/* GOOD zone overlay (50–70) */}
+                  <div style={{
+                    position: 'absolute',
+                    left: '50%',
+                    top: 0,
+                    bottom: 0,
+                    width: '20%',
+                    background: 'rgba(34,197,94,0.1)',
+                    border: '1px dashed #22c55e',
+                  }} />
+                </div>
               </div>
-            )}
-          </div>
 
-          {/* Deliver */}
-          <button
-            onClick={handleDeliver}
-            disabled={!craftDone}
-            style={
-              craftDone
-                ? { background: '#22c55e', color: '#fff', fontWeight: 'bold', fontSize: '1.05rem' }
-                : undefined
-            }
-          >
-            Deliver
-          </button>
+              {/* Advisory text */}
+              <div style={{ fontSize: '0.75rem', color: '#aaa', textAlign: 'center', marginTop: '4px', fontStyle: 'italic' }}>
+                {strikesRemaining > 0
+                  ? heat >= 50 && heat <= 75
+                    ? 'Strike now! (ideal quench zone)'
+                    : heat < 50
+                      ? 'Heat up with Bellows'
+                      : 'Cool down before quenching'
+                  : `Quench now! (auto in ${Math.max(0, Math.round(autoQuenchMs / 1000))}s)`}
+              </div>
 
-          {/* Recent result */}
+              {/* Strike summary */}
+              <div style={{ fontSize: '0.8rem', color: '#aaa', textAlign: 'center', marginTop: '6px' }}>
+                Quality: <span style={{ color: '#22c55e' }}>{quality}</span> | Defects: <span style={{ color: '#ef4444' }}>{defects}</span> | Score: <span style={{ color: '#fbbf24' }}>{Math.round(score)} → {liveGrade}</span>
+              </div>
+
+              {/* Strikes remaining */}
+              <div style={{ fontSize: '0.8rem', color: '#aaa', textAlign: 'center', marginTop: '4px' }}>
+                Strikes: {strikesRemaining} remaining
+              </div>
+
+              {/* Hammer and Bellows buttons */}
+              <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                <div style={{ position: 'relative', flex: 1 }}>
+                  <button
+                    onClick={handleHammer}
+                    disabled={!hammerReady || strikesRemaining <= 0}
+                    style={{
+                      width: '100%',
+                      opacity: hammerReady && strikesRemaining > 0 ? 1 : 0.6,
+                    }}
+                  >
+                    🔨 Hammer
+                    {hammerCd > 0 ? ` (${(hammerCd / 1000).toFixed(1)}s)` : ''}
+                  </button>
+                  {fx?.kind === 'SPARKS' && (
+                    <div className="sparks-container">
+                      {fx.sparks.map((s, i) => (
+                        <div
+                          key={i}
+                          className="spark"
+                          style={{
+                            '--tx': `${Math.cos(s.angle) * s.dist}px`,
+                            '--ty': `${Math.sin(s.angle) * s.dist}px`,
+                          } as React.CSSProperties}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  onClick={handleBellows}
+                  disabled={!bellowsReady}
+                  style={{
+                    flex: 1,
+                    opacity: bellowsReady ? 1 : 0.6,
+                  }}
+                >
+                  💨 Bellows
+                  {bellowsCd > 0 ? ` (${(bellowsCd / 1000).toFixed(1)}s)` : ''}
+                </button>
+              </div>
+
+              {/* Quench button */}
+              <button
+                onClick={handleQuench}
+                style={{
+                  marginTop: '8px',
+                  width: '100%',
+                  background:
+                    heat > 75
+                      ? '#ef4444'
+                      : heat >= 50 && heat <= 75
+                        ? '#22c55e'
+                        : heat >= 35
+                          ? '#60a5fa'
+                          : '#7c3aed',
+                  color: heat > 75 || (heat >= 50 && heat <= 75) ? '#fff' : '#111',
+                  fontWeight: 'bold',
+                  fontSize: '1rem',
+                }}
+              >
+                🧊 Quench
+                {strikesRemaining <= 0 ? ` (auto in ${Math.max(0, Math.round(autoQuenchMs / 1000))}s)` : ''}
+              </button>
+
+              {/* Strike feedback */}
+              {state.crafting?.lastStrike && state.crafting.lastStrike.ageMs < 1200 && (
+                <div
+                  style={{
+                    fontSize: '0.85rem',
+                    fontWeight: 'bold',
+                    textAlign: 'center',
+                    marginTop: '4px',
+                    color: state.crafting.lastStrike.zone === 'PERFECT' ? '#22c55e' : state.crafting.lastStrike.zone === 'GOOD' ? '#fbbf24' : '#ef4444',
+                    opacity: 1 - state.crafting.lastStrike.ageMs / 1200,
+                  }}
+                >
+                  {state.crafting.lastStrike.zone === 'PERFECT'
+                    ? `PERFECT! +${state.crafting.lastStrike.qualityDelta}`
+                    : state.crafting.lastStrike.zone === 'GOOD'
+                      ? `GOOD +${state.crafting.lastStrike.qualityDelta}`
+                      : `BAD +${state.crafting.lastStrike.qualityDelta} / +${state.crafting.lastStrike.defectDelta} defects`}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Grade result */}
           {state.lastEvent && (
             <div style={{
-              fontSize: '0.85rem',
-              color: state.lastEvent.success ? '#22c55e' : '#ef4444',
+              fontSize: '0.9rem',
+              fontWeight: 'bold',
+              color: state.lastEvent.grade === 'S' || state.lastEvent.grade === 'A' || state.lastEvent.grade === 'B' ? '#22c55e' : state.lastEvent.grade === 'C' ? '#fbbf24' : '#ef4444',
               textAlign: 'center',
-              marginTop: '2px',
+              marginTop: '8px',
             }}>
-              {state.lastEvent.success
-                ? `+${state.lastEvent.goldGained}g · +${state.lastEvent.repGained} rep`
-                : `+${state.lastEvent.goldGained}g · No rep gained`}
+              Grade: {state.lastEvent.grade} | +{state.lastEvent.goldGained}g · +{state.lastEvent.repGained} rep
             </div>
           )}
 

@@ -125,7 +125,7 @@ function drawScene(
   drawGround(ctx);
   drawExit(ctx);
 
-  if (run.success) {
+  if (run.grade === 'S' || run.grade === 'A' || run.grade === 'B') {
     // ── SUCCESS path ──────────────────────────────────────────────────────────
     const travelMs = ((ADV_END_X - ADV_START_X) / SPEED_PX_SEC) * 1000;
     const advX = Math.min(ADV_END_X, ADV_START_X + (elapsed / 1000) * SPEED_PX_SEC);

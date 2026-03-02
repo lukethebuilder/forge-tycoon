@@ -3,7 +3,7 @@
 import type { GameState } from '../game/types';
 
 const STORAGE_KEY = 'forge-tycoon-state';
-const CURRENT_VERSION = 4;
+const CURRENT_VERSION = 5;
 
 export function loadState(): GameState | null {
   try {
